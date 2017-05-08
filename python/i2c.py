@@ -2,39 +2,43 @@ import smbus
 import time
 import signal
 import sys
+from oled_display import OledDisplay
 
 class RobotDriver:
-    # This is the address we setup in the Arduino Program
-    i2c_address = 0x04
-    i2c_bus = 1
+    I2C_BUS = 1
+    SERVO_STOP = 134
+
+    # Address of the atmega/arduino servo driver board
+    controller_i2c_address = 0x04
 
     def __init__(self):
         signal.signal(signal.SIGINT, self.exit_gracefully)
         signal.signal(signal.SIGTERM, self.exit_gracefully)
-        self.i2c_bus = smbus.SMBus(self.i2c_bus)
+        self.i2c_bus = smbus.SMBus(self.I2C_BUS)
 
     def exit_gracefully(self,signum, frame):
         print('Stopping servos.')
-        self.writeNumber(134)
-        sys.exit(1)
+        self.moveServo(self.SERVO_STOP)
+        sys.exit(0)
 
-    def writeNumber(self, value):
-        self.i2c_bus.write_byte(self.i2c_address, value)
+    def moveServo(self, value):
+        self.i2c_bus.write_byte(self.controller_i2c_address, value)
 
-    def readNumber(self):
-        number = self.i2c_bus.read_byte(self.i2c_address)
+    def readResponse(self):
+        number = self.i2c_bus.read_byte(self.controller_i2c_address)
         return number
 
 
 if __name__ == '__main__':
     driver = RobotDriver()
     while True:
+        oled = OledDisplay()
         for i in range(140,220, 10):
             print('Sending value: {}'.format(i))
-            driver.writeNumber(i)
+            driver.moveServo(i)
             time.sleep(.5)
 
         for i in range(140,40, -10):
             print('Sending value: {}'.format(i))
-            driver.writeNumber(i)
+            driver.moveServo(i)
             time.sleep(.5)

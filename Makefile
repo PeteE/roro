@@ -5,7 +5,7 @@ all:
 	    platformio -f -c vim run
 
 upload:
-	    platformio -f -c vim run --target upload
+	    platformio -f -c vim run --target upload -v
 
 clean:
 	    platformio -f -c vim run --target clean
@@ -20,5 +20,4 @@ update:
 	    platformio -f -c vim update
 
 monitor:
-	    #platformio device monitor -b 115200
-	    platformio device monitor
+	platformio device monitor -p /dev/ttyAMA0 -b 9600
