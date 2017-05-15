@@ -1,102 +1,70 @@
-#include <Arduino.h>
-#include <Wire.h>
-#include <Servo.h>
+#include <SoftwareSerial.h>
+#include <SoftwareServo.h>
+// ***
+// *** Define the RX and TX pins. Choose any two
+// *** pins that are unused. Try to avoid D0 (pin 5)
+// *** and D2 (pin 7) if you plan to use I2C.
+// ***
 
-// setup i2c communication between 
-// rpi (master) and arduino (slave)
-#define SLAVE_ADDRESS 0x04
-int number = 0;
-int state = 0;
+#define RX    3   // *** D3, Pin 2
+#define TX    4   // *** D4, Pin 3
 
-// define servos
-Servo s1, s2;
-const int servo_min = 1000;
-const int servo_mid = 1530;
-const int servo_max = 2000;
+
+// ***
+// *** Define the software based serial port. Using the
+// *** name Serial so that code can be used on other
+// *** platforms that support hardware based serial. On
+// *** chips that support the hardware serial, just
+// *** comment this line.
+// ***
+SoftwareSerial Serial(RX, TX);
+SoftwareServo s0, s1;
+
+const int servo_min = 40;
+const int servo_mid = 93;
+const int servo_max = 140;
 bool servos_stopped = 0;
-const int servo_threshold = 10;
-
-int ledFwdPin = 2;
-int ledBckPin = 3;
+const int servo_threshold = 2;
 
 void driveServos(int pos) {
-    pos = constrain(pos, 40, 220);
-    int y_val = map(pos, 40, 220, 1000, 2000);
-    if( y_val > servo_mid - servo_threshold && y_val < servo_mid + servo_threshold) {
-        y_val = servo_mid;
+    if( pos > servo_mid - servo_threshold && pos < servo_mid + servo_threshold) {
+        pos = servo_mid;
     }
 
-    int s1_val, s2_val = servo_mid;
-    int diff = abs(y_val - servo_mid);
+    int s0_pos, s1_pos = servo_mid;
+    int diff = abs(pos - servo_mid);
 
-    if(y_val == servo_mid) {
-        digitalWrite(ledFwdPin, LOW);
-        digitalWrite(ledBckPin, LOW);
-        s1_val = servo_mid;
-        s2_val = servo_mid;
-    } else if(y_val >= servo_mid) {
+    if(pos == servo_mid) {
+        // no motion
+        s0_pos = servo_mid;
+        s1_pos = servo_mid;
+    } else if(pos >= servo_mid) {
         // going forward
-        digitalWrite(ledFwdPin, HIGH);
-        digitalWrite(ledBckPin, LOW);
-        s1_val = servo_mid + diff;
-        s2_val = servo_mid - diff;
+        s0_pos = servo_mid + diff;
+        s1_pos = servo_mid - diff;
     } 
     else {
         // going backwards
-        digitalWrite(ledBckPin, HIGH);
-        digitalWrite(ledFwdPin, LOW);
-        s1_val = servo_mid - diff;
-        s2_val = servo_mid + diff; 
+        s0_pos = servo_mid - diff;
+        s1_pos = servo_mid + diff;
     }
-    Serial.print("s1val: ");
-    Serial.print(s1_val);
-    Serial.print(", pos: ");
-    Serial.println(pos);
-    s1.writeMicroseconds(s1_val);
-    s2.writeMicroseconds(s2_val);
+    Serial.print("s0_pos: ");
+    Serial.println(s0_pos);
+    s0.write(s0_pos);
+    s1.write(s1_pos);
 }
-
-// callback for received data
-void receiveData(int byteCount) {
-    while(Wire.available()) {
-        number = Wire.read();
-        Serial.print("data received: ");
-        Serial.println(number);
-        driveServos(number);
-    }
-}
-// callback for sending data
-void sendData(){
-    Wire.write(number);
-}
-
 void setup() {
-
-/*
-TCCR2B |= _BV(CS20);//set bit (remove this line for a /8 prescaler)
-TCCR2B |= _BV(CS21);//set bit
-TCCR2B &= ~_BV(CS22);//clear bit
-*/
-
-    Serial.begin(9600); // start serial for output
-    pinMode(ledFwdPin, OUTPUT);
-    pinMode(ledBckPin, OUTPUT);
-
-    // initialize i2c as slave
-    Wire.begin(SLAVE_ADDRESS);
-
-    // define callbacks for i2c communication
-    Wire.onReceive(receiveData);
-    Wire.onRequest(sendData);
-
-    // setup services
-    s1.attach(9);
-    s2.attach(10);
-    s1.writeMicroseconds(servo_mid);
-    s2.writeMicroseconds(servo_mid);
-    Serial.println("Ready!");
+  Serial.begin(9600);
+  Serial.println("Initializing...");
+  s1.attach(0);
+  s0.attach(1);
 }
 
 void loop() {
-    delay(100);
+  if(Serial.available() > 0) {
+    int pos = Serial.read();
+    pos = constrain(pos, servo_min, servo_max);
+    driveServos(pos);
+  }
+  SoftwareServo::refresh();        // must call at least once every 50ms or so to keep your servos updating
 }
