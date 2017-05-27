@@ -15,7 +15,7 @@ class RobotDriver:
 
     def exit_gracefully(self,signum, frame):
         print('Stopping servos.')
-        self.writeNumber(134)
+        self.writeNumber(90)
         sys.exit(1)
 
     def writeNumber(self, value):
@@ -29,12 +29,14 @@ class RobotDriver:
 if __name__ == '__main__':
     driver = RobotDriver()
     while True:
-        for i in range(140,220, 10):
+        for i in range(90, 180, 10):
             print('Sending value: {}'.format(i))
             driver.writeNumber(i)
+            print(driver.readNumber())
             time.sleep(.5)
 
-        for i in range(140,40, -10):
+        for i in range(180, 90, -10):
             print('Sending value: {}'.format(i))
             driver.writeNumber(i)
+            print(driver.readNumber())
             time.sleep(.5)

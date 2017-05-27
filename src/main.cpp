@@ -9,59 +9,79 @@ int number = 0;
 int state = 0;
 
 // define servos
-Servo s1, s2;
+Servo s0, s1;
+
+#define S0_PIN 0
+#define S1_PIN 1
+#define LED_FWD_PIN 2
+#define LED_BACK_PIN 3
+
 const int servo_min = 1000;
-const int servo_mid = 1530;
+const int servo_mid = 1513;
 const int servo_max = 2000;
 bool servos_stopped = 0;
-const int servo_threshold = 10;
+const int servo_threshold = 20;
 
-int ledFwdPin = 2;
-int ledBckPin = 3;
+void detachServos() {
+    if(s0.attached()) {
+        s0.detach();
+    }
+    if(s1.attached()) {
+        s1.detach();
+    }
+}
 
+void attachServos() {
+    if(!s0.attached()) {
+        s0.attach(S0_PIN);
+    }
+    if(!s1.attached()) {
+        s1.attach(S1_PIN);
+    }
+}
 void driveServos(int pos) {
-    pos = constrain(pos, 40, 220);
-    int y_val = map(pos, 40, 220, 1000, 2000);
+    pos = constrain(pos, 0, 180);
+    int y_val = map(pos, 0, 180, 1000, 2000);
     if( y_val > servo_mid - servo_threshold && y_val < servo_mid + servo_threshold) {
         y_val = servo_mid;
     }
 
-    int s1_val, s2_val = servo_mid;
+    int s0_val, s1_val = servo_mid;
     int diff = abs(y_val - servo_mid);
 
     if(y_val == servo_mid) {
-        digitalWrite(ledFwdPin, LOW);
-        digitalWrite(ledBckPin, LOW);
+        digitalWrite(LED_FWD_PIN, LOW);
+        digitalWrite(LED_BACK_PIN, LOW);
+        detachServos();
+        s0_val = servo_mid;
         s1_val = servo_mid;
-        s2_val = servo_mid;
-    } else if(y_val >= servo_mid) {
+        return;
+    } else { 
+        attachServos();
+    }
+
+    if(y_val >= servo_mid) {
         // going forward
-        digitalWrite(ledFwdPin, HIGH);
-        digitalWrite(ledBckPin, LOW);
-        s1_val = servo_mid + diff;
-        s2_val = servo_mid - diff;
+        digitalWrite(LED_FWD_PIN, HIGH);
+        digitalWrite(LED_BACK_PIN, LOW);
+        s0_val = servo_mid + diff;
+        s1_val = servo_mid - diff;
     } 
     else {
         // going backwards
-        digitalWrite(ledBckPin, HIGH);
-        digitalWrite(ledFwdPin, LOW);
-        s1_val = servo_mid - diff;
-        s2_val = servo_mid + diff; 
+        digitalWrite(LED_BACK_PIN, HIGH);
+        digitalWrite(LED_FWD_PIN, LOW);
+        s0_val = servo_mid - diff;
+        s1_val = servo_mid + diff; 
     }
-    Serial.print("s1val: ");
-    Serial.print(s1_val);
-    Serial.print(", pos: ");
-    Serial.println(pos);
+    s0.writeMicroseconds(s0_val);
     s1.writeMicroseconds(s1_val);
-    s2.writeMicroseconds(s2_val);
 }
 
 // callback for received data
 void receiveData(int byteCount) {
     while(Wire.available()) {
         number = Wire.read();
-        Serial.print("data received: ");
-        Serial.println(number);
         driveServos(number);
     }
 }
@@ -71,16 +91,8 @@ void sendData(){
 }
 
 void setup() {
-
-/*
-TCCR2B |= _BV(CS20);//set bit (remove this line for a /8 prescaler)
-TCCR2B |= _BV(CS21);//set bit
-TCCR2B &= ~_BV(CS22);//clear bit
-*/
-
-    Serial.begin(9600); // start serial for output
-    pinMode(ledFwdPin, OUTPUT);
-    pinMode(ledBckPin, OUTPUT);
+    pinMode(LED_FWD_PIN, OUTPUT);
+    pinMode(LED_BACK_PIN, OUTPUT);
 
     // initialize i2c as slave
     Wire.begin(SLAVE_ADDRESS);
@@ -88,13 +100,6 @@ TCCR2B &= ~_BV(CS22);//clear bit
     // define callbacks for i2c communication
     Wire.onReceive(receiveData);
     Wire.onRequest(sendData);
-
-    // setup services
-    s1.attach(9);
-    s2.attach(10);
-    s1.writeMicroseconds(servo_mid);
-    s2.writeMicroseconds(servo_mid);
-    Serial.println("Ready!");
 }
 
 void loop() {
