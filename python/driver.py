@@ -8,9 +8,10 @@ from oled_display import OledDisplay
 class RobotDriver:
     SERVO_STOP = 90
 
-    def __init__(self, i2c_address=0x04, i2c_bus=1):
+    def __init__(self, i2c_address=0x04, i2c_bus=1, oled_display=None):
         self.i2c_address = i2c_address
         self.i2c_bus = smbus.SMBus(i2c_bus)
+        self.oled_display = oled_display
 
         signal.signal(signal.SIGINT, self.exit_gracefully)
         signal.signal(signal.SIGTERM, self.exit_gracefully)
@@ -18,9 +19,12 @@ class RobotDriver:
         self.set_state(s0_pos=90, s1_pos=90, led_pattern=robot_data_pb2.RobotData.OFF)
 
 
-    def exit_gracefully(self,signum, frame):
-        print('Stopping servos.')
+    def exit_gracefully(self, signum, frame):
+        print('Exiting.')
         self.set_state(s0_pos=90, s1_pos=90, led_pattern=robot_data_pb2.RobotData.OFF)
+        if self.oled_display:
+            self.oled_display.clear()
+
         sys.exit(0)
 
     def set_state(self, s0_pos, s1_pos, led_pattern):
@@ -36,22 +40,22 @@ class RobotDriver:
         # write data
         for c in data:
             self.i2c_bus.write_byte(self.i2c_address, ord(c))
+
+        if self.oled_display:
+            oled_text = 'RobotState:\ns0: {}, s1: {}'.format(self.current_state.s0_pos, self.current_state.s1_pos)
+            self.oled_display.display_text(oled_text)
+
     
 if __name__ == '__main__':
     oled = OledDisplay()
-    driver = RobotDriver()
+    driver = RobotDriver(oled_display=oled)
 
     while True:
         for i in range(90, 40, -5):
-            oled_text = 'RobotState:\ns0: {}\ns1: {}'.format(i, i)
-            oled.display_text(oled_text)
-
             driver.set_state(s0_pos=i, s1_pos=i, led_pattern=robot_data_pb2.RobotData.OFF)
             time.sleep(.5)
 
         for i in range(40, 90, 5):
-            oled_text = 'RobotState:\ns0: {}\ns1: {}'.format(i, i)
-            oled.display_text(oled_text)
             driver.set_state(s0_pos=i, s1_pos=i, led_pattern=robot_data_pb2.RobotData.OFF)
             time.sleep(.5)
 
