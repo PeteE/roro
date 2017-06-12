@@ -20,4 +20,4 @@ update:
 	    platformio -f -c vim update
 
 monitor:
-	platformio device monitor -p /dev/ttyAMA0 -b 9600
+	platformio device monitor -p /dev/ttyS0 -b 9600

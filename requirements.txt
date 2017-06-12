@@ -25,3 +25,6 @@ six==1.10.0
 smbus-cffi==0.5.1
 spidev==3.2
 wsgiref==0.1.2
+-e git+https://github.com/adafruit/Adafruit_Python_GPIO.git#egg=Adafruit-GPIO
+-e git+https://github.com/adafruit/Adafruit_Python_PureIO.git#egg=Adafruit-PureIO
+-e git+https://github.com/adafruit/Adafruit_Python_SSD1306.git#egg=Adafruit-SSD1306

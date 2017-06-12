@@ -2,6 +2,7 @@ import smbus
 import time
 import signal
 import sys
+#from oled_display import OledDisplay
 
 class RobotDriver:
     # This is the address we setup in the Arduino Program
@@ -28,15 +29,24 @@ class RobotDriver:
 
 if __name__ == '__main__':
     driver = RobotDriver()
+    #oled0 = OledDisplay()
     while True:
         for i in range(90, 180, 10):
             print('Sending value: {}'.format(i))
             driver.writeNumber(i)
-            print(driver.readNumber())
+            #print(driver.readNumber())
             time.sleep(.5)
 
-        for i in range(180, 90, -10):
+        for i in range(180, 0, -10):
             print('Sending value: {}'.format(i))
             driver.writeNumber(i)
-            print(driver.readNumber())
+            #print(driver.readNumber())
             time.sleep(.5)
+
+        for i in range(0, 90, 10):
+            print('Sending value: {}'.format(i))
+            driver.writeNumber(i)
+            #print(driver.readNumber())
+            #time.sleep(.5)
+
+

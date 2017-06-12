@@ -11,41 +11,42 @@ from PIL import ImageFont
 class OledDisplay:
     def __init__(self, pin=24):
         # 128x32 display with hardware I2C:
-        disp = Adafruit_SSD1306.SSD1306_128_32(rst=pin)
-        disp.begin()
-        disp.clear()
-        disp.display()
+        self.dispa = Adafruit_SSD1306.SSD1306_128_32(rst=pin, i2c_address=0x3c)
+        self.clear()
 
-        # Create blank image for drawing.
-        # Make sure to create image with mode '1' for 1-bit color.
-        width = disp.width
-        height = disp.height
+    def clear(self):
+        self.dispa.begin()
+        self.dispa.clear()
+        self.dispa.display()
+
+    def display_text(self, text):
+        width = self.dispa.width
+        height = self.dispa.height
         image = Image.new('1', (width, height))
 
         # Get drawing object to draw on image.
         draw = ImageDraw.Draw(image)
-        # Draw some shapes.
-        # First define some constants to allow easy resizing of shapes.
         padding = -2
         top = padding
         bottom = height - padding
-        # Move left to right keeping track of the current x position for drawing shapes.
-        x = 0
 
         # Load default font.
         font = ImageFont.load_default()
 
         # Draw a black filled box to clear the image.
         draw.rectangle((0,0, width, height), outline=0, fill=0)
+        for line in text.splitlines():
+            # Move left to right keeping track of the current x position for drawing shapes.
+            x = 0
+            draw.text((x, top), line, font=font, fill=254)
+            top+=8
 
-        draw.text((x, top), "RoRoRo", font=font, fill=255)
-        draw.text((x, top+8), "Hello", font=font, fill=255)
-        draw.text((x, top+16), "World", font=font, fill=255)
         # Display image.
-        disp.image(image)
-        disp.display()
+        self.dispa.image(image)
+        self.dispa.display()
 
 
 if __name__ == '__main__':
     oled = OledDisplay()
+    oled.display_text('Line0\nLine1\nLine2')
 
