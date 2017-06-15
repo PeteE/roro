@@ -30,15 +30,25 @@ NewPing sonarb(TRIGB_PIN, ECHOB_PIN, MAX_DISTANCE); // NewPing setup of pins and
 
 // LED Strip
 #define LED_STRIP_PIN 8
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(10, LED_STRIP_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(8, LED_STRIP_PIN, NEO_GRB + NEO_KHZ800);
 
 // protobuf stuff
-RobotData robot_data;
-RobotData_LedPattern led_pattern;
-int header_bytes_read = 0;
-byte payload[16];
-int payload_size = 0;
-int payload_bytes_read = 0;
+RobotData recv_robot_data;
+RobotData curr_robot_data;
+
+int recv_header_bytes_read = 0;
+byte recv_payload[32];
+int recv_payload_size = 0;
+int recv_payload_bytes_read = 0;
+long recv_start_time = 0;
+long unsigned recv_threshold = 500;
+
+bool send_header_sent = false;
+int unsigned send_payload_bytes_sent = 0;
+pb_ostream_t send_stream;
+byte send_payload[32];
+long send_start_time = 0;
+long unsigned send_threshold = 500;
 
 const int servo_min = 1000;
 const int servo_mid = 1513;
@@ -153,9 +163,9 @@ void theaterChaseRainbow(uint8_t wait) {
   }
 }
 
-void driveServos(RobotData robot_data) {
-    int pos0 = constrain(robot_data.s0_pos, 0, 180);
-    int pos1 = constrain(robot_data.s1_pos, 0, 180);
+void driveServos() {
+    int pos0 = constrain(curr_robot_data.s0_pos, 0, 180);
+    int pos1 = constrain(curr_robot_data.s1_pos, 0, 180);
 
     // map position to pwm microseconds
     int pos0_u = map(pos0, 0, 180, 1000, 2000);
@@ -204,8 +214,8 @@ void driveServos(RobotData robot_data) {
 
 void driveLeds() {
     Serial.print("led_pattern: ");
-    Serial.println(led_pattern);
-    switch(led_pattern) {
+    Serial.println(curr_robot_data.led_pattern);
+    switch(curr_robot_data.led_pattern) {
         //case RobotData_LedPattern.RobotData_LedPattern_COLORWIPE:
         case 1:
             Serial.println("colorWipe");
@@ -224,9 +234,38 @@ void driveLeds() {
     }
 }
 
-void updateRobot(RobotData robot_data) {
-    driveServos(robot_data);
-    led_pattern = robot_data.led_pattern;
+void updateRobot() {
+    curr_robot_data.s0_pos = recv_robot_data.s0_pos;
+    curr_robot_data.s1_pos = recv_robot_data.s1_pos;
+    curr_robot_data.led_pattern = recv_robot_data.led_pattern;
+
+    driveServos();
+    //driveLeds();
+}
+
+void check_i2c_timeout() {
+    // just in case we receive partial protobuf data
+    // we want to do some cleanup if a certain amount of time has passed.
+    unsigned long current_time = millis();
+    if(current_time - recv_start_time > recv_threshold && 
+        (recv_header_bytes_read > 0 || recv_payload_bytes_read > 0) 
+    ) {
+        recv_start_time = 0;
+        recv_payload_size = 0;
+        recv_header_bytes_read = 0;
+        recv_payload_bytes_read = 0;
+        Serial.println("Reading i2c data timed out");
+        Wire.begin(SLAVE_ADDRESS);
+    }
+    if(current_time - send_start_time > send_threshold &&
+        (send_header_sent || send_payload_bytes_sent > 0)
+    ) {
+        send_start_time = 0;
+        send_payload_bytes_sent = 0;
+        send_header_sent = false;
+        Serial.println("Sending i2c data timed out");
+        Wire.begin(SLAVE_ADDRESS);
+    }
 }
 
 // callback for received data
@@ -234,58 +273,87 @@ void receiveData(int byteCount) {
     /* Before receiving any protobuf data, we expect to receive a 2 byte header 
        which indicates the number of bytes to read.
     */
+    check_i2c_timeout();
     byte data = Wire.read();
-    if(header_bytes_read == 0) { 
-        payload_size = data << 8;
-        header_bytes_read++;
-    } else if(header_bytes_read == 1) { 
-        payload_size += data;
-        header_bytes_read++;
-    } else if (payload_bytes_read <= payload_size) {
+    if(recv_header_bytes_read == 0) { 
+        recv_start_time = millis();
+        recv_payload_size = data << 8;
+        recv_header_bytes_read++;
+    } else if(recv_header_bytes_read == 1) { 
+        recv_payload_size += data;
+        recv_header_bytes_read++;
+    } else if (recv_payload_bytes_read <= recv_payload_size) {
         /* ready to read payload_size bytes */
-        if(payload_bytes_read < payload_size) {
-            payload[payload_bytes_read++] = data;
+        if(recv_payload_bytes_read < recv_payload_size) {
+            recv_payload[recv_payload_bytes_read++] = data;
         }
-        if(payload_bytes_read >= payload_size) {
-            pb_istream_t stream = pb_istream_from_buffer(payload, payload_size);
-            if(!pb_decode(&stream, RobotData_fields, &robot_data)) {
+        if(recv_payload_bytes_read >= recv_payload_size) {
+            pb_istream_t stream = pb_istream_from_buffer(recv_payload, recv_payload_size);
+            if(!pb_decode(&stream, RobotData_fields, &recv_robot_data)) {
                 Serial.print("decode failed!");
+                recv_start_time = 0;
+                recv_header_bytes_read = 0;
+                recv_payload_bytes_read = 0;
+                recv_payload_size = 0;
+            } else {
+                recv_start_time = 0;
+                recv_header_bytes_read = 0;
+                recv_payload_bytes_read = 0;
+                recv_payload_size = 0;
+                updateRobot();
             }
-            header_bytes_read = 0;
-            payload_bytes_read = 0;
-            updateRobot(robot_data);
         }
     }
 }
 
 // callback for sending data
 void sendData(){
-    Wire.write(number);
+    send_start_time = millis();
+    if(!send_header_sent) {
+        send_stream = pb_ostream_from_buffer(send_payload, sizeof(send_payload));
+        if(pb_encode(&send_stream, RobotData_fields, &curr_robot_data)) {
+            Wire.write(send_stream.bytes_written);
+            send_header_sent = true;
+        }
+    } else {
+        byte byte_to_send = send_payload[send_payload_bytes_sent++];
+        Wire.write(byte_to_send);
+
+        if(send_payload_bytes_sent >= send_stream.bytes_written) {
+            send_payload_bytes_sent = 0;
+            send_header_sent = false;
+        }
+    }
 }
 
 void setup() {
     Serial.begin(9600);
+    Serial.println("Initializing");
 
     // initialize i2c as slave
     Wire.begin(SLAVE_ADDRESS);
 
+    curr_robot_data.sonarf = 0;
+    curr_robot_data.sonarb = 0;
+    curr_robot_data.s0_pos = servo_mid;
+    curr_robot_data.s1_pos = servo_mid;
+    curr_robot_data.led_pattern = RobotData_LedPattern_RAINBOW;
+    
+
     // define callbacks for i2c communication
     Wire.onReceive(receiveData);
     Wire.onRequest(sendData);
-    Serial.println("Initializing");
 
     strip.begin();
     strip.show(); // Initialize all pixels to 'off'
+    rainbow(20);
+    ledsOff();
 }
 
 void loop() {
-  Serial.print("Ping: ");
-  Serial.print(sonarf.ping_cm()); // Send ping, get distance in cm and print result (0 = outside set distance range)
-  Serial.print("cm");
-  Serial.print(", ");
-  Serial.print(sonarb.ping_cm()); // Send ping, get distance in cm and print result (0 = outside set distance range)
-  Serial.println("cm");
+    curr_robot_data.sonarf = sonarf.ping_cm();
+    curr_robot_data.sonarb = sonarb.ping_cm();
 
-  delay(500);
-  //driveLeds();
+    check_i2c_timeout();
+    delay(100);
 }

@@ -27,23 +27,47 @@ class RobotDriver:
 
         sys.exit(0)
 
+    def get_state(self):
+        try:
+            data_length = self.i2c_bus.read_byte(self.i2c_address)
+            #print('Length: {}'.format(data_length))
+            i = 0;
+            data = []
+            while i < data_length: 
+                data.append(self.i2c_bus.read_byte(self.i2c_address))
+                i+=1
+
+            rd = robot_data_pb2.RobotData()
+            rd.ParseFromString("".join(map(chr, data)))
+            print(rd)
+
+            if self.oled_display:
+                oled_text = ['RobotState:',
+                             's0: {}, s1: {}'.format(rd.s0_pos, rd.s1_pos),
+                             'sF: {}, sB: {}'.format(rd.sonarf, rd.sonarb),
+                            ] 
+                self.oled_display.display_text('\n'.join(oled_text))
+        except Exception as e:
+            print('Error getting state from robot.')
+
     def set_state(self, s0_pos, s1_pos, led_pattern):
-        self.current_state.s0_pos=s0_pos
-        self.current_state.s1_pos=s1_pos
-        self.current_state.led_pattern = led_pattern
+        try:
+            self.current_state.s0_pos=s0_pos
+            self.current_state.s1_pos=s1_pos
+            self.current_state.led_pattern=led_pattern
+            self.current_state.sonarf=0
+            self.current_state.sonarb=0
 
-        data = self.current_state.SerializeToString()
-        data_size = len(data)
-        # write header
-        self.i2c_bus.write_byte(self.i2c_address, (data_size >> 8) & 0xFF)
-        self.i2c_bus.write_byte(self.i2c_address, data_size & 0xFF)
-        # write data
-        for c in data:
-            self.i2c_bus.write_byte(self.i2c_address, ord(c))
-
-        if self.oled_display:
-            oled_text = 'RobotState:\ns0: {}, s1: {}'.format(self.current_state.s0_pos, self.current_state.s1_pos)
-            self.oled_display.display_text(oled_text)
+            data = self.current_state.SerializeToString()
+            data_size = len(data)
+            # write header
+            self.i2c_bus.write_byte(self.i2c_address, (data_size >> 8) & 0xFF)
+            self.i2c_bus.write_byte(self.i2c_address, data_size & 0xFF)
+            # write data
+            for c in data:
+                self.i2c_bus.write_byte(self.i2c_address, ord(c))
+        except Exception as e:
+            print(e)
 
     
 if __name__ == '__main__':
@@ -52,11 +76,13 @@ if __name__ == '__main__':
 
     while True:
         for i in range(90, 40, -5):
-            driver.set_state(s0_pos=i, s1_pos=i, led_pattern=robot_data_pb2.RobotData.OFF)
+            driver.set_state(s0_pos=i, s1_pos=i, led_pattern=robot_data_pb2.RobotData.RAINBOW)
             time.sleep(.5)
+            driver.get_state()
 
         for i in range(40, 90, 5):
-            driver.set_state(s0_pos=i, s1_pos=i, led_pattern=robot_data_pb2.RobotData.OFF)
+            driver.set_state(s0_pos=i, s1_pos=i, led_pattern=robot_data_pb2.RobotData.RAINBOW)
             time.sleep(.5)
+            driver.get_state()
 
 

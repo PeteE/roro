@@ -1,13 +1,13 @@
 message RobotData {
     required int32 s0_pos = 1; // servo0 position (0-180 degrees)
     required int32 s1_pos = 2; // servo1 position (0-180 degress)
-    optional int32 sonar0 = 3; // # of centimeters returned by sonar sensor
-    optional int32 sonar1 = 4; // # of centimeters returned by sonar sensor
+    required int64 sonarf = 3 [default = 0]; // # of centimeters returned by sonar sensor
+    required int64 sonarb = 4 [default = 0]; // # of centimeters returned by sonar sensor
 
     enum LedPattern { 
         OFF = 0;
         COLORWIPE = 1;
         RAINBOW = 2;
     }
-    optional LedPattern led_pattern = 5 [default = OFF ];
+    required LedPattern led_pattern = 5 [default = OFF ];
 }

@@ -18,7 +18,7 @@ _sym_db = _symbol_database.Default()
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='robot_data.proto',
   package='',
-  serialized_pb=_b('\n\x10robot_data.proto\"\xaf\x01\n\tRobotData\x12\x0e\n\x06s0_pos\x18\x01 \x02(\x05\x12\x0e\n\x06s1_pos\x18\x02 \x02(\x05\x12\x0e\n\x06sonar0\x18\x03 \x01(\x05\x12\x0e\n\x06sonar1\x18\x04 \x01(\x05\x12/\n\x0bled_pattern\x18\x05 \x01(\x0e\x32\x15.RobotData.LedPattern:\x03OFF\"1\n\nLedPattern\x12\x07\n\x03OFF\x10\x00\x12\r\n\tCOLORWIPE\x10\x01\x12\x0b\n\x07RAINBOW\x10\x02')
+  serialized_pb=_b('\n\x10robot_data.proto\"\xb5\x01\n\tRobotData\x12\x0e\n\x06s0_pos\x18\x01 \x02(\x05\x12\x0e\n\x06s1_pos\x18\x02 \x02(\x05\x12\x11\n\x06sonarf\x18\x03 \x02(\x03:\x01\x30\x12\x11\n\x06sonarb\x18\x04 \x02(\x03:\x01\x30\x12/\n\x0bled_pattern\x18\x05 \x02(\x0e\x32\x15.RobotData.LedPattern:\x03OFF\"1\n\nLedPattern\x12\x07\n\x03OFF\x10\x00\x12\r\n\tCOLORWIPE\x10\x01\x12\x0b\n\x07RAINBOW\x10\x02')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -45,8 +45,8 @@ _ROBOTDATA_LEDPATTERN = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=147,
-  serialized_end=196,
+  serialized_start=153,
+  serialized_end=202,
 )
 _sym_db.RegisterEnumDescriptor(_ROBOTDATA_LEDPATTERN)
 
@@ -73,22 +73,22 @@ _ROBOTDATA = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='sonar0', full_name='RobotData.sonar0', index=2,
-      number=3, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
+      name='sonarf', full_name='RobotData.sonarf', index=2,
+      number=3, type=3, cpp_type=2, label=2,
+      has_default_value=True, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='sonar1', full_name='RobotData.sonar1', index=3,
-      number=4, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
+      name='sonarb', full_name='RobotData.sonarb', index=3,
+      number=4, type=3, cpp_type=2, label=2,
+      has_default_value=True, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
       name='led_pattern', full_name='RobotData.led_pattern', index=4,
-      number=5, type=14, cpp_type=8, label=1,
+      number=5, type=14, cpp_type=8, label=2,
       has_default_value=True, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -106,7 +106,7 @@ _ROBOTDATA = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=21,
-  serialized_end=196,
+  serialized_end=202,
 )
 
 _ROBOTDATA.fields_by_name['led_pattern'].enum_type = _ROBOTDATA_LEDPATTERN
